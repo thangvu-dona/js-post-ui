@@ -3,12 +3,17 @@ import postApi from "./api/postAPI";
 
 async function main() {
   // const response = await axiosClient.get('/posts');
-  const params = {
-    _page: 2,
-    _limit: 5
-  };
-  const response = await postApi.getAll(params);
-  console.log(response);
+  try {
+    const params = {
+      _page: 2,
+      _limit: 5
+    };
+    const response = await postApi.getAll(params);
+    console.log(response);
+  } catch (error) {
+    console.log('get all failed', error);
+    // show modal, toast errors, ...
+  }
 }
 
 main();
