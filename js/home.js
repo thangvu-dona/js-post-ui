@@ -1,8 +1,8 @@
 import postApi from "./api/postAPI";
-import { setTextContent, truncateText } from "./utils/common";
 
 import dayjs from "dayjs";
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { getUlPaginationElement, setTextContent, truncateText } from "./utils";
 
 // extend plugin to use fromNow function
 dayjs.extend(relativeTime);
@@ -60,6 +60,9 @@ const renderPostList = (postList) => {
   const ulElement = document.getElementById('postList');
   if (!ulElement) return;
 
+  // clear current list then render new request list
+  ulElement.textContent = '';
+
   postList.forEach((post) => {
     const liElement = createPostElement(post);
 
@@ -67,17 +70,121 @@ const renderPostList = (postList) => {
   });
 };
 
+const renderPagination = (pagination) => {
+  if (!pagination) return;
+
+  const ulPagination = getUlPaginationElement();
+  if (!ulPagination) return;
+
+  const { _page, _limit, _totalRows } = pagination;
+  const totalPages = Math.ceil(_totalRows / _limit);
+
+  // save page and totalPage to ulPagination
+  ulPagination.dataset.page = _page;
+  ulPagination.dataset.totalPages = totalPages;
+
+  // check if enabled/disabled prev link
+  if (_page <= 1) {
+    ulPagination.firstElementChild.classList.add('disabled')
+  } else {
+    ulPagination.firstElementChild.classList.remove('disabled');
+  };
+
+  // check if enabled/disabled next link
+  if (_page >= totalPages) {
+    ulPagination.lastElementChild.classList.add('disabled');
+  } else {
+    ulPagination.lastElementChild.classList.remove('disabled');
+  };
+
+};
+
+const handleFilterChange = async (filterName, filterValue) => {
+  try {
+    // update query params
+    const url = new URL(window.location);
+    url.searchParams.set(filterName, filterValue);
+    history.pushState({}, '', url);
+
+    // re-render post list
+    const { data, pagination } = await postApi.getAll(url.searchParams);
+    renderPostList(data);
+    renderPagination(pagination);
+  } catch (error) {
+    console.log('fail to fetch post list', error);
+  }
+};
+
+const handlePrevClick = (e) => {
+  e.preventDefault();
+  console.log('Prev click');
+
+  const ulPagination = getUlPaginationElement();
+  if (!ulPagination) return;
+
+  // get current page and calculate the previous page
+  const currentPage = Number.parseInt(ulPagination.dataset.page) || 1;
+  console.log('current page: ' + currentPage);
+  if (currentPage <= 1) return;
+
+  handleFilterChange('_page', currentPage - 1);
+}
+
+const handleNextClick = (e) => {
+  e.preventDefault();
+  console.log('Next click')
+
+  const ulPagination = getUlPaginationElement();
+  if (!ulPagination) return;
+
+  // get current page and calculate the next page
+  const currentPage = Number.parseInt(ulPagination.dataset.page) || 1;
+  if (currentPage >= ulPagination.dataset.totalPages) return;
+
+  handleFilterChange('_page', currentPage + 1);
+}
+
+const initURL = () => {
+  const url = new URL(window.location);
+
+  //update search params(_page, _limit) if no exists
+  if (!url.searchParams.get('_page')) url.searchParams.set('_page', 1);
+  if (!url.searchParams.get('_limit')) url.searchParams.set('_limit', 6);
+
+  history.pushState({}, '', url);
+};
+
+const initPagination = () => {
+  // bind click events  for prev/next link
+  const ulPagination = getUlPaginationElement();
+  if (!ulPagination) return;
+
+  // add click event for prev link
+  const prevLink = ulPagination.firstElementChild?.firstElementChild;
+  if (prevLink) {
+    prevLink.addEventListener('click', handlePrevClick);
+  }
+
+  // add click event for prev link
+  const nextLink = ulPagination.lastElementChild?.lastElementChild;
+  if (nextLink) {
+    nextLink.addEventListener('click', handleNextClick);
+  }
+};
+
 (async () => {
   try {
-    const params = {
-      _page: 1,
-      _limit: 6
-    };
+    // attach click event for links
+    initPagination();
 
+    // set default pagination(_page, _limit) on URL
+    initURL();
+
+    // render post list base on URL params
+    const params = new URLSearchParams(window.location.search);
     const { data, pagination } = await postApi.getAll(params);
-
-    // render post 
     renderPostList(data);
+    renderPagination(pagination);
 
   } catch (error) {
     console.log('get all failed', error);

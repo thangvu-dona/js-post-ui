@@ -1,1 +1,2 @@
-import { setTextContent } from "./common.js";
+export * from './common';
+export * from './selectors';
