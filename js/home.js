@@ -149,16 +149,6 @@ const handleNextClick = (e) => {
   handleFilterChange('_page', currentPage + 1);
 }
 
-const initURL = () => {
-  const url = new URL(window.location);
-
-  //update search params(_page, _limit) if no exists
-  if (!url.searchParams.get('_page')) url.searchParams.set('_page', 1);
-  if (!url.searchParams.get('_limit')) url.searchParams.set('_limit', 6);
-
-  history.pushState({}, '', url);
-};
-
 const initPagination = () => {
   // bind click events  for prev/next link
   const ulPagination = getUlPaginationElement();
@@ -195,18 +185,23 @@ const initSearch = () => {
 
 (async () => {
   try {
+    const url = new URL(window.location);
+
+    //update search params(_page, _limit) if no exists
+    if (!url.searchParams.get('_page')) url.searchParams.set('_page', 1);
+    if (!url.searchParams.get('_limit')) url.searchParams.set('_limit', 6);
+
+    history.pushState({}, '', url);
+    queryParams = url.searchParams;
+
     // attach click event for links
-    initPagination();
+    initPagination(queryParams);
 
     // attack search Input
-    initSearch();
-
-    // set default pagination(_page, _limit) on URL
-    initURL();
+    initSearch(queryParams);
 
     // render post list base on URL params
-    const params = new URLSearchParams(window.location.search);
-    const { data, pagination } = await postApi.getAll(params);
+    const { data, pagination } = await postApi.getAll(queryParams);
     renderPostList(data);
     renderPagination(pagination);
 
